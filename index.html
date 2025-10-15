@@ -1,0 +1,194 @@
+<!doctype html>
+
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Specialist Name Generator</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#06b6d4;--glass: rgba(255,255,255,0.04)}
+    body{font-family:Inter, system-ui, sans-serif;background:linear-gradient(180deg,#071026 0%, #071a2a 100%);color:#e6eef6;margin:0;padding:24px;}
+    .wrap{max-width:900px;margin:0 auto}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    p.lead{color:var(--muted);margin:0}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 24px rgba(2,6,23,0.6);}
+    label{font-size:13px;color:var(--muted)}
+    textarea{width:100%;min-height:88px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:inherit;resize:vertical}
+    .row{display:flex;gap:12px;margin-top:12px}
+    button{background:var(--accent);border:0;padding:10px 14px;border-radius:10px;color:#042027;font-weight:600;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    pre{background:#02121b;padding:12px;border-radius:8px;overflow:auto;color:#dff7fb}
+    .meta{display:flex;gap:8px;align-items:center;margin-top:10px}
+    .small{font-size:13px;color:var(--muted)}
+    .mapping-list{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .map-item{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;font-size:13px}
+    footer{color:var(--muted);font-size:13px;margin-top:14px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Specialist Name Generator</h1>
+        <p class="lead">বাংলা/ইংরেজি বাক্য লিখলেই সঠিক Specialist নাম (সংক্ষেপে) দেখাবে — HTML/CSS/JS দিয়ে তৈরি একটি সিঙ্গল-ফাইল টুল।</p>
+      </div>
+    </header><div class="card">
+  <label for="inputText">Enter a description (e.g. "Specialist of Eye Diseases (Medical Retina, Phaco & Laser Surgeon)")</label>
+  <textarea id="inputText" placeholder="Type a specialization or description...">Specialist of Eye Diseases (Medical Retina, Phaco & Laser Surgeon)</textarea>
+
+  <div class="row">
+    <button id="generateBtn">Generate</button>
+    <button id="copyBtn" class="ghost">Copy Result</button>
+    <button id="saveMappingBtn" class="ghost">Save Custom Mapping</button>
+    <button id="clearCustomBtn" class="ghost">Clear Custom Mappings</button>
+  </div>
+
+  <div class="meta">
+    <div class="small">Result:</div>
+  </div>
+
+  <pre id="result">-- Press Generate --</pre>
+
+  <div class="small" style="margin-top:8px">How it decides: simple keyword matching + custom mappings (stored in your browser). You can add your own mapping for phrases.</div>
+
+  <div class="mapping-list" id="mappingList"></div>
+
+  <footer>
+    Tip: Try variations like "eye surgeon retina phaco laser" or "cataract surgeon" to see matched result.
+  </footer>
+</div>
+
+  </div>  <script>
+    // Base mapping (keywords -> canonical specialist string)
+    const baseMappings = [
+      {k:["eye","retina","phaco","phacoemulsification","cataract","ophthalmic","ophthalmologist"], v:"Ophthalmologist (Retina & Phaco Surgeon) ✅"},
+      {k:["heart","cardio","cardiac","cardiologist","angina","myocardial","ecg"], v:"Cardiologist ✅"},
+      {k:["brain","neuro","neurology","neurologist","stroke","seizure","epilepsy"], v:"Neurologist / Neurosurgeon ✅"},
+      {k:["lung","pulmo","pulmonology","asthma","pneumonia","respiratory"], v:"Pulmonologist ✅"},
+      {k:["stomach","gastro","gastric","abdomen","gastroenterologist","liver"], v:"Gastroenterologist / Hepatologist ✅"},
+      {k:["kidney","nephro","nephrologist","renal","dialysis"], v:"Nephrologist ✅"},
+      {k:["skin","derma","dermatologist","eczema","psoriasis","rash"], v:"Dermatologist ✅"},
+      {k:["ear","nose","throat","ent","otolaryngologist","sinus","tonsil"], v:"ENT Specialist (Otolaryngologist) ✅"},
+      {k:["tooth","dental","dentist","oral","periodontist","endodontist"], v:"Dentist / Oral Surgeon ✅"},
+      {k:["pregnancy","gynaec","gyneco","obstetric","obstetrician","gynecologist"], v:"Gynecologist / Obstetrician ✅"},
+      {k:["children","pediatric","paediatric","child","pediatrician"], v:"Pediatrician ✅"},
+      {k:["cancer","oncology","oncologist","tumor","tumour"], v:"Oncologist ✅"},
+      {k:["psychiatry","psychiatrist","mental","depression","anxiety","psychologist"], v:"Psychiatrist / Psychologist ✅"},
+      {k:["ortho","orthopedic","bone","joint","fracture","arthritis"], v:"Orthopedic Surgeon / Rheumatologist ✅"},
+      {k:["urolog","urinary","prostate","andrologist","urologist"], v:"Urologist / Andrologist ✅"},
+      {k:["radiology","radiologist","x-ray","ct","mri","imaging"], v:"Radiologist ✅"},
+      {k:["icu","critical care","intensive","anesthesiologist","anesthesia"], v:"Critical Care / Anesthesiologist ✅"}
+    ];
+
+    // Load custom mappings from localStorage
+    function loadCustomMappings(){
+      try{
+        const raw = localStorage.getItem('specialist_custom_mappings_v1');
+        return raw ? JSON.parse(raw) : [];
+      }catch(e){return []}
+    }
+
+    function saveCustomMappings(list){
+      localStorage.setItem('specialist_custom_mappings_v1', JSON.stringify(list));
+    }
+
+    // Merge mappings (custom first so user overrides)
+    function allMappings(){
+      const custom = loadCustomMappings();
+      return [...custom, ...baseMappings];
+    }
+
+    // Main match function: return best match or fallback
+    function matchSpecialist(text){
+      const t = text.toLowerCase();
+      const mappings = allMappings();
+
+      // Score each mapping by number of keyword hits
+      let best = {score:0, val:null, matchedKeys:[]};
+      mappings.forEach(m=>{
+        let score=0;let matched=[];
+        m.k.forEach(k=>{ if(t.includes(k)) { score++; matched.push(k);} });
+        if(score>best.score){ best={score, val:m.v, matchedKeys:matched}; }
+      });
+
+      if(best.score>0) return {result:best.val, reason: `matched keywords: ${best.matchedKeys.join(', ')}`};
+
+      // Fallback heuristics using regex-like keywords
+      if(/eye|vision|sight|retina|cataract/.test(t)) return {result: 'Ophthalmologist ✅', reason:'fallback: eye keywords'};
+      if(/heart|cardio|ecg/.test(t)) return {result: 'Cardiologist ✅', reason:'fallback: heart keywords'};
+      if(/child|kid|pediatric|paediatr/.test(t)) return {result: 'Pediatrician ✅', reason:'fallback: child keywords'};
+
+      return {result: 'No confident match — try a different phrase or save a custom mapping', reason: 'no match'};
+    }
+
+    // UI wiring
+    const input = document.getElementById('inputText');
+    const resultBox = document.getElementById('result');
+    const generateBtn = document.getElementById('generateBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const saveMappingBtn = document.getElementById('saveMappingBtn');
+    const clearCustomBtn = document.getElementById('clearCustomBtn');
+    const mappingList = document.getElementById('mappingList');
+
+    function renderMappings(){
+      mappingList.innerHTML='';
+      const custom = loadCustomMappings();
+      if(custom.length){
+        custom.forEach((m,idx)=>{
+          const d = document.createElement('div'); d.className='map-item';
+          d.textContent = `Custom: [${m.k.join(', ')}] → ${m.v}`;
+          const rm = document.createElement('button'); rm.textContent='Remove'; rm.style.marginLeft='6px'; rm.onclick=()=>{
+            custom.splice(idx,1); saveCustomMappings(custom); renderMappings();
+          };
+          d.appendChild(rm);
+          mappingList.appendChild(d);
+        });
+      }
+      // show few base mappings
+      baseMappings.slice(0,6).forEach(m=>{
+        const d = document.createElement('div'); d.className='map-item';
+        d.textContent = `Base: [${m.k.slice(0,4).join(', ')}${m.k.length>4?', ...':''}] → ${m.v}`;
+        mappingList.appendChild(d);
+      });
+    }
+
+    generateBtn.onclick = ()=>{
+      const t = input.value.trim();
+      if(!t){ resultBox.textContent='Please enter a description.'; return; }
+      const out = matchSpecialist(t);
+      resultBox.textContent = `${out.result}\n\n(${out.reason})`;
+    };
+
+    copyBtn.onclick = ()=>{
+      navigator.clipboard.writeText(resultBox.textContent).then(()=>{
+        copyBtn.textContent='Copied ✓'; setTimeout(()=>copyBtn.textContent='Copy Result',1200);
+      }).catch(()=>{copyBtn.textContent='Copy failed';});
+    };
+
+    saveMappingBtn.onclick = ()=>{
+      const t = input.value.trim().toLowerCase();
+      if(!t){ alert('Enter the phrase you want to map (the full input or keywords).'); return; }
+      const v = prompt('Enter the exact specialist text to return (e.g. "Ophthalmologist (Retina & Phaco Surgeon) ✅"):');
+      if(!v) return;
+      // split words as keywords
+      const keys = t.split(/[,;\/-]+|\s+/).filter(Boolean);
+      const custom = loadCustomMappings();
+      custom.unshift({k:keys, v:v});
+      saveCustomMappings(custom);
+      renderMappings();
+      alert('Custom mapping saved. It will be used before base mappings.');
+    };
+
+    clearCustomBtn.onclick = ()=>{
+      if(confirm('Clear all custom mappings stored in this browser?')){ localStorage.removeItem('specialist_custom_mappings_v1'); renderMappings(); }
+    };
+
+    // initial render
+    renderMappings();
+
+    // Generate on load for sample text
+    window.addEventListener('load', ()=>{ generateBtn.click(); });
+  </script></body>
+</html>
