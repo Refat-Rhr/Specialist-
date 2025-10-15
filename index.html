@@ -61,7 +61,6 @@
 </div>
 
   </div>  <script>
-    // Base mapping (keywords -> canonical specialist string)
     const baseMappings = [
       {k:["eye","retina","phaco","phacoemulsification","cataract","ophthalmic","ophthalmologist"], v:"Ophthalmologist (Retina & Phaco Surgeon) ✅"},
       {k:["heart","cardio","cardiac","cardiologist","angina","myocardial","ecg"], v:"Cardiologist ✅"},
@@ -82,7 +81,6 @@
       {k:["icu","critical care","intensive","anesthesiologist","anesthesia"], v:"Critical Care / Anesthesiologist ✅"}
     ];
 
-    // Load custom mappings from localStorage
     function loadCustomMappings(){
       try{
         const raw = localStorage.getItem('specialist_custom_mappings_v1');
@@ -94,36 +92,30 @@
       localStorage.setItem('specialist_custom_mappings_v1', JSON.stringify(list));
     }
 
-    // Merge mappings (custom first so user overrides)
     function allMappings(){
       const custom = loadCustomMappings();
       return [...custom, ...baseMappings];
     }
 
-    // Main match function: return best match or fallback
     function matchSpecialist(text){
       const t = text.toLowerCase();
       const mappings = allMappings();
-
-      // Score each mapping by number of keyword hits
-      let best = {score:0, val:null, matchedKeys:[]};
+      let best = {score:0, val:null};
       mappings.forEach(m=>{
-        let score=0;let matched=[];
-        m.k.forEach(k=>{ if(t.includes(k)) { score++; matched.push(k);} });
-        if(score>best.score){ best={score, val:m.v, matchedKeys:matched}; }
+        let score=0;
+        m.k.forEach(k=>{ if(t.includes(k)) { score++; } });
+        if(score>best.score){ best={score, val:m.v}; }
       });
 
-      if(best.score>0) return {result:best.val, reason: `matched keywords: ${best.matchedKeys.join(', ')}`};
+      if(best.score>0) return best.val;
 
-      // Fallback heuristics using regex-like keywords
-      if(/eye|vision|sight|retina|cataract/.test(t)) return {result: 'Ophthalmologist ✅', reason:'fallback: eye keywords'};
-      if(/heart|cardio|ecg/.test(t)) return {result: 'Cardiologist ✅', reason:'fallback: heart keywords'};
-      if(/child|kid|pediatric|paediatr/.test(t)) return {result: 'Pediatrician ✅', reason:'fallback: child keywords'};
+      if(/eye|vision|sight|retina|cataract/.test(t)) return 'Ophthalmologist ✅';
+      if(/heart|cardio|ecg/.test(t)) return 'Cardiologist ✅';
+      if(/child|kid|pediatric|paediatr/.test(t)) return 'Pediatrician ✅';
 
-      return {result: 'No confident match — try a different phrase or save a custom mapping', reason: 'no match'};
+      return 'No confident match — try a different phrase or save a custom mapping';
     }
 
-    // UI wiring
     const input = document.getElementById('inputText');
     const resultBox = document.getElementById('result');
     const generateBtn = document.getElementById('generateBtn');
@@ -146,7 +138,6 @@
           mappingList.appendChild(d);
         });
       }
-      // show few base mappings
       baseMappings.slice(0,6).forEach(m=>{
         const d = document.createElement('div'); d.className='map-item';
         d.textContent = `Base: [${m.k.slice(0,4).join(', ')}${m.k.length>4?', ...':''}] → ${m.v}`;
@@ -158,7 +149,7 @@
       const t = input.value.trim();
       if(!t){ resultBox.textContent='Please enter a description.'; return; }
       const out = matchSpecialist(t);
-      resultBox.textContent = `${out.result}\n\n(${out.reason})`;
+      resultBox.textContent = out;
     };
 
     copyBtn.onclick = ()=>{
@@ -172,7 +163,6 @@
       if(!t){ alert('Enter the phrase you want to map (the full input or keywords).'); return; }
       const v = prompt('Enter the exact specialist text to return (e.g. "Ophthalmologist (Retina & Phaco Surgeon) ✅"):');
       if(!v) return;
-      // split words as keywords
       const keys = t.split(/[,;\/-]+|\s+/).filter(Boolean);
       const custom = loadCustomMappings();
       custom.unshift({k:keys, v:v});
@@ -185,10 +175,8 @@
       if(confirm('Clear all custom mappings stored in this browser?')){ localStorage.removeItem('specialist_custom_mappings_v1'); renderMappings(); }
     };
 
-    // initial render
     renderMappings();
 
-    // Generate on load for sample text
     window.addEventListener('load', ()=>{ generateBtn.click(); });
   </script></body>
 </html>
